@@ -26,8 +26,7 @@ main.load_dotenv()  # get environment variables from .env file
 #=================
 # Set page title and favicon
 
-image = Image.open(r'Image\Favicon.png')
-st.set_page_config(page_title="QUILLERY-DeepMindCraft", page_icon=image, layout="wide")
+st.set_page_config(page_title="QUILLERY-DeepMindCraft", page_icon=":robot_face:", layout="wide")
 
 
 # Custom CSS for neomorphic and glassmorphic effects
