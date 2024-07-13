@@ -8,7 +8,6 @@ from langchain.vectorstores import FAISS
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import RetrievalQA
-from langchain.llms import GooglePalm
 from langchain.agents import initialize_agent
 from langchain.agents import AgentType
 from langchain.agents import Tool
@@ -16,8 +15,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from io import BytesIO
 from uuid import uuid4
 from dotenv import main
-from PIL import Image
-
+import gc  # Import garbage collector
 
 main.load_dotenv()  # get environment variables from .env file
 
@@ -26,8 +24,7 @@ main.load_dotenv()  # get environment variables from .env file
 #=================
 # Set page title and favicon
 
-st.set_page_config(page_title="QUILLERY-DeepMindCraft", page_icon=":robot_face:", layout="wide")
-
+st.set_page_config(page_title="QUILLERY-DeepMindCraft", page_icon=":brain:", layout="wide")
 
 # Custom CSS for neomorphic and glassmorphic effects
 css = '''
@@ -69,33 +66,18 @@ st.markdown("<h1 style='text-align: center; color: #1E1E1E;'>QUILLERY</h1>", uns
 
 # Sidebar
 with st.sidebar:
-    # st.markdown("<h3 style='text-align: center;'>Chatbot Options</h3>", unsafe_allow_html=True)
     try:
         image_url = "Image/logo.png"
         st.image(image_url, caption="", use_column_width=True)
-    except:
+    except FileNotFoundError:
         st.warning("Logo image not found. Please check the path.")
-
-    # Add some example sidebar options
-    # st.selectbox("Choose a model", ["GPT-3", "GPT-4", "Claude"])
-    # st.slider("Temperature", 0.0, 1.0, 0.7)
-    # st.number_input("Max Tokens", 1, 1000, 150)
-
-# # Main chat area (placeholder)
-# st.markdown("<div style='background-color: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; box-shadow: 20px 20px 60px #bebebe, -20px -20px 60px #ffffff;'>", unsafe_allow_html=True)
-# st.text_area("You:", height=100)
-# st.button("Send")
-# st.markdown("</div>", unsafe_allow_html=True)
 
 # Placeholder for chat history
 st.markdown("<div style='margin-top: 2rem;'>", unsafe_allow_html=True)
-st.markdown("<p><strong>AI:</strong> Hello! This How can I assist you today?</p>", unsafe_allow_html=True)
+st.markdown("<p><strong>AI:</strong> Hello! How can I assist you today?</p>", unsafe_allow_html=True)
 st.markdown("<p><strong>You:</strong> Can you explain what RAG means in the context of AI?</p>", unsafe_allow_html=True)
 st.markdown("<p><strong>AI:</strong> Certainly! RAG stands for Retrieval-Augmented Generation. It's an AI technique that combines...</p>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
-
-
-
 
 #=================
 # API Key and Files Upload
@@ -165,13 +147,16 @@ def CSVAnalysis(uploaded_file):
         response = model.generate_content(f"Based on the CSV file {fileName}, {user_query}")
         st.text_area('LLM Answer: ', value=response.text, height=400)
         history_func(response.text, user_query)
+        # Cleanup
+        del df
+        gc.collect()
 
 def MergePDFAnalysis(uploaded_files):
     raw_text = ''
     for file in uploaded_files:
         pdf_reader = PdfReader(file)
         temp_text = ''
-        for i, page in enumerate(pdf_reader.pages):
+        for page in pdf_reader.pages:
             text = page.extract_text()
             if text:
                 temp_text += text
@@ -203,10 +188,13 @@ def MergePDFAnalysis(uploaded_files):
         st.subheader("Answer:")
         st.text_area('LLM Answer: ', value=response.text, height=400)
         history_func(response.text, question)
+        # Cleanup
+        del raw_text, texts, embeddings, docsearch
+        gc.collect()
 
 def ComparePDFAnalysis(uploaded_files):
     tools = []
-    llm = GooglePalm(api_key=gemini_api_key)
+    llm = genai.GenerativeModel('gemini-pro') #Made a change here
     for file in uploaded_files:
         st.write("File name is ", file.name)
         save_uploadedfile(file)
@@ -235,6 +223,9 @@ def ComparePDFAnalysis(uploaded_files):
         response = agent.run(question)
         st.text_area('LLM Answer: ', value=response, height=400)
         history_func(response, question)
+        # Cleanup
+        del tools, llm, agent
+        gc.collect()
 
 def TextAnalysis(uploaded_files):
     raw_text = ''
@@ -268,6 +259,9 @@ def TextAnalysis(uploaded_files):
         st.subheader("Answer:")
         st.text_area('LLM Answer: ', value=response.text, height=400)
         history_func(response.text, question)
+        # Cleanup
+        del raw_text, texts, embeddings, docsearch
+        gc.collect()
 
 #=================
 # Answer Generation
@@ -294,3 +288,6 @@ if uploaded_files:
             TextAnalysis(uploaded_files)
     else:
         st.write("Formats are not valid")
+
+# Explicitly call garbage collector
+gc.collect()
