@@ -15,56 +15,33 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from io import BytesIO
 from uuid import uuid4
 from dotenv import main
-import gc  # Import garbage collector
+import gc
 
-main.load_dotenv()  # get environment variables from .env file
+# Load environment variables
+main.load_dotenv()
 
 #=================
-# Background Image , Chatbot Title and Logo
+# CSS and Page Configuration
 #=================
-# Set page title and favicon
-
 st.set_page_config(page_title="QUILLERY-DeepMindCraft", page_icon=":brain:", layout="wide")
 
-# Custom CSS for neomorphic and glassmorphic effects
 css = '''
 <style>
-    .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
-    .css-1d391kg {
-        background-color: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 20px 20px 60px #bebebe, -20px -20px 60px #ffffff;
-    }
-    .css-1v0mbdj {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-radius: 15px;
-        padding: 1rem;
-        box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff;
-    }
-    .stButton>button {
-        border-radius: 10px;
-        border: none;
-        padding: 10px 20px;
-        background: linear-gradient(145deg, #e6e6e6, #ffffff);
-        box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff;
-    }
+    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+    .css-1d391kg { background-color: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; box-shadow: 20px 20px 60px #bebebe, -20px -20px 60px #ffffff; }
+    .css-1v0mbdj { background-color: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 1rem; box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff; }
+    .stButton>button { border-radius: 10px; border: none; padding: 10px 20px; background: linear-gradient(145deg, #e6e6e6, #ffffff); box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff; transition: all 0.3s ease; }
+    .stButton>button:hover { box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff; }
 </style>
 '''
 
 st.markdown(css, unsafe_allow_html=True)
 
-# Main content
+#=================
+# Main and Sidebar Content
+#=================
 st.markdown("<h1 style='text-align: center; color: #1E1E1E;'>QUILLERY</h1>", unsafe_allow_html=True)
 
-# Sidebar
 with st.sidebar:
     try:
         image_url = "Image/logo.png"
@@ -80,9 +57,8 @@ st.markdown("<p><strong>AI:</strong> Certainly! RAG stands for Retrieval-Augment
 st.markdown("</div>", unsafe_allow_html=True)
 
 #=================
-# API Key and Files Upload
+# API Key and File Upload
 #=================
-# Use Gemini API key
 gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password")
 genai.configure(api_key=gemini_api_key)
 
@@ -92,13 +68,13 @@ if file_format == "TXT":
 
 uploaded_files = st.sidebar.file_uploader("Upload a file", type=["csv", "txt", "pdf"], accept_multiple_files=True)
 
-def validateFormat(file_format, uploaded_files):
+def validate_format(file_format, uploaded_files):
     for file in uploaded_files:
         if str(file_format).lower() not in str(file.type).lower():
             return False
     return True
 
-def selectPDFAnalysis():
+def select_pdf_analysis():
     type_pdf = st.selectbox("Select Analysis Type on PDFs", ["Compare", "Merge"])
     if type_pdf == "Compare":
         st.write("Analysis Comparing PDFs")
@@ -107,27 +83,22 @@ def selectPDFAnalysis():
         st.write("Analysis Merging PDFs")
         return "Merge"
 
-def save_uploadedfile(uploadedfile):
+def save_uploaded_file(uploadedfile):
     with open(os.path.join(uploadedfile.name), "wb") as f:
         f.write(uploadedfile.getbuffer())
     return st.success("Saved File")
-
-#=================
-# Answer Generation Functions Based on Uploaded File Format
-#=================
 
 def history_func(answer, q):
     if 'history' not in st.session_state:
         st.session_state.history = ''
 
     value = f'Q: {q} \nA: {answer}'
-
     st.session_state.history = f'{value} \n {"-" * 100} \n {st.session_state.history}'
     h = st.session_state.history
 
     st.text_area(label='Chat History', value=h, key='history', height=400)
 
-def CSVAnalysis(uploaded_file):
+def csv_analysis(uploaded_file):
     df = pd.read_csv(uploaded_file)
     left_column, right_column = st.columns(2)
     with left_column:
@@ -136,22 +107,21 @@ def CSVAnalysis(uploaded_file):
     with right_column:
         st.header("Dataframe Tail")
         st.write(df.tail())
-    save_uploadedfile(uploaded_file)
-    fileName = uploaded_file.name
-    st.write("fileName is " + fileName)
+    save_uploaded_file(uploaded_file)
+    file_name = uploaded_file.name
+    st.write("fileName is " + file_name)
     user_query = st.text_input('Enter your query')
 
     if st.button("Answer My Question"):
         st.write("Running the query ", user_query)
         model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(f"Based on the CSV file {fileName}, {user_query}")
+        response = model.generate_content(f"Based on the CSV file {file_name}, {user_query}")
         st.text_area('LLM Answer: ', value=response.text, height=400)
         history_func(response.text, user_query)
-        # Cleanup
         del df
         gc.collect()
 
-def MergePDFAnalysis(uploaded_files):
+def merge_pdf_analysis(uploaded_files):
     raw_text = ''
     for file in uploaded_files:
         pdf_reader = PdfReader(file)
@@ -188,16 +158,15 @@ def MergePDFAnalysis(uploaded_files):
         st.subheader("Answer:")
         st.text_area('LLM Answer: ', value=response.text, height=400)
         history_func(response.text, question)
-        # Cleanup
         del raw_text, texts, embeddings, docsearch
         gc.collect()
 
-def ComparePDFAnalysis(uploaded_files):
+def compare_pdf_analysis(uploaded_files):
     tools = []
-    llm = genai.GenerativeModel('gemini-pro') #Made a change here
+    llm = genai.GenerativeModel('gemini-pro')
     for file in uploaded_files:
         st.write("File name is ", file.name)
-        save_uploadedfile(file)
+        save_uploaded_file(file)
         loader = PyPDFLoader(file.name)
         pages = loader.load_and_split()
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
@@ -223,11 +192,10 @@ def ComparePDFAnalysis(uploaded_files):
         response = agent.run(question)
         st.text_area('LLM Answer: ', value=response, height=400)
         history_func(response, question)
-        # Cleanup
         del tools, llm, agent
         gc.collect()
 
-def TextAnalysis(uploaded_files):
+def text_analysis(uploaded_files):
     raw_text = ''
     for file in uploaded_files:
         temp_text = file.read().decode("utf-8")
@@ -259,35 +227,32 @@ def TextAnalysis(uploaded_files):
         st.subheader("Answer:")
         st.text_area('LLM Answer: ', value=response.text, height=400)
         history_func(response.text, question)
-        # Cleanup
         del raw_text, texts, embeddings, docsearch
         gc.collect()
 
 #=================
 # Answer Generation
 #=================
-
 if uploaded_files:
-    if validateFormat(file_format, uploaded_files):
+    if validate_format(file_format, uploaded_files):
         if file_format == "CSV":
             if len(uploaded_files) > 1:
                 st.write("Only 1 CSV file can be uploaded")
             else:
                 for file in uploaded_files:
-                    CSVAnalysis(file)
+                    csv_analysis(file)
         elif file_format == "PDF":
             if len(uploaded_files) > 1:
-                select = selectPDFAnalysis()
+                select = select_pdf_analysis()
                 if select == "Compare":
-                    ComparePDFAnalysis(uploaded_files)
+                    compare_pdf_analysis(uploaded_files)
                 else:
-                    MergePDFAnalysis(uploaded_files)
+                    merge_pdf_analysis(uploaded_files)
             else:
-                MergePDFAnalysis(uploaded_files)
+                merge_pdf_analysis(uploaded_files)
         else:
-            TextAnalysis(uploaded_files)
+            text_analysis(uploaded_files)
     else:
         st.write("Formats are not valid")
 
-# Explicitly call garbage collector
 gc.collect()
