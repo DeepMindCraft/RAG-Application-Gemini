@@ -18,7 +18,7 @@ from dotenv import main
 import gc
 
 # Load environment variables
-main.load_dotenv()
+# main.load_dotenv()
 
 #=================
 # CSS and Page Configuration
