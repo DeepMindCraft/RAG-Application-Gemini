@@ -99,27 +99,37 @@ def history_func(answer, q):
     st.text_area(label='Chat History', value=h, key='history', height=400)
 
 def csv_analysis(uploaded_file):
-    df = pd.read_csv(uploaded_file)
-    left_column, right_column = st.columns(2)
-    with left_column:
-        st.header("Dataframe Head")
-        st.write(df.head())
-    with right_column:
-        st.header("Dataframe Tail")
-        st.write(df.tail())
-    save_uploaded_file(uploaded_file)
-    file_name = uploaded_file.name
-    st.write("fileName is " + file_name)
-    user_query = st.text_input('Enter your query')
+    try:
+        df = pd.read_csv(uploaded_file)
+        st.header("Dataframe Overview")
+        st.dataframe(df)
+        save_uploaded_file(uploaded_file)
+        file_name = uploaded_file.name
+        st.write(f"Filename: {file_name}")
+        
+        # Displaying more detailed statistics about the data
+        st.header("Dataframe Summary Statistics")
+        st.write(df.describe())
+        
+        # Allow the user to input a query to analyze the CSV
+        user_query = st.text_input('Enter your query')
 
-    if st.button("Answer My Question"):
-        st.write("Running the query ", user_query)
-        model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(f"Based on the CSV file {file_name}, {user_query}")
-        st.text_area('LLM Answer: ', value=response.text, height=400)
-        history_func(response.text, user_query)
-        del df
-        gc.collect()
+        if st.button("Answer My Question"):
+            st.write("Running the query: ", user_query)
+            model = genai.GenerativeModel('gemini-pro')
+
+            # Providing more context to the model for better responses
+            context = f"Here is a CSV data preview:\n{df.head().to_string()}\n\nSummary statistics:\n{df.describe().to_string()}"
+            response = model.generate_content(f"Based on the following CSV data context:\n{context}\n\nQuery: {user_query}")
+
+            st.text_area('LLM Answer:', value=response.text, height=400)
+            history_func(response.text, user_query)
+
+            # Clearing memory
+            del df
+            gc.collect()
+    except Exception as e:
+        st.error(f"Error processing CSV file: {e}")
 
 def merge_pdf_analysis(uploaded_files):
     raw_text = ''
